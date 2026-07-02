@@ -1,0 +1,74 @@
+{% extends 'base.html' %} {% block content %}
+<div class="message-box">
+  <h2>Chat Room: {{code}}</h2>
+  <div class="messages" id="messages"></div>
+  <button id="scroll-btn" onclick="scrollToBottom()" title="Jump to latest">&#8595;</button>
+  <div class="inputs">
+    <input
+      type="text"
+      rows="3"
+      placeholder="Message"
+      name="message"
+      id="message"
+    />
+    <button type="button" name="send" id="send-btn" onClick="sendMessage()">
+      Send
+    </button>
+  </div>
+</div>
+<script type="text/javascript">
+  var socketio = io();
+
+  const messages = document.getElementById("messages");
+  const scrollBtn = document.getElementById("scroll-btn");
+
+  function isAtBottom() {
+    return messages.scrollHeight - messages.scrollTop - messages.clientHeight < 50;
+  }
+
+  function scrollToBottom() {
+    messages.scrollTop = messages.scrollHeight;
+    scrollBtn.style.display = "none";
+  }
+
+  messages.addEventListener("scroll", () => {
+    scrollBtn.style.display = isAtBottom() ? "none" : "flex";
+  });
+
+  const createMessage = (name, msg) => {
+    const atBottom = isAtBottom();
+    const content = `
+    <div class="text">
+        <span>
+            <strong>${name}</strong>: ${msg}
+        </span>
+        <span class="muted">
+            ${new Date().toLocaleString()}
+        </span>
+    </div>
+    `;
+    messages.innerHTML += content;
+    if (atBottom) scrollToBottom();
+    else scrollBtn.style.display = "flex";
+  };
+
+  socketio.on("message", (data) => {
+    createMessage(data.name, data.message);
+  });
+
+  const sendMessage = () => {
+    const message = document.getElementById("message");
+    if (message.value == "") return;
+    socketio.emit("message", { data: message.value });
+    message.value = "";
+  };
+
+  document.getElementById("message").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+{% for msg in messages %}
+<script type="text/javascript">
+  createMessage("{{msg.name}}", "{{msg.message}}");
+</script>
+{% endfor %} {% endblock %}

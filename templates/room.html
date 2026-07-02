@@ -1,24 +1,30 @@
 {% extends 'base.html' %} {% block content %}
-<div class="message-box">
-  <h2>Chat Room: {{code}}</h2>
+<div class="message-box glass-panel">
+  <h2>Chat Room: <span class="highlight">{{code}}</span></h2>
   <div class="messages" id="messages"></div>
   <button id="scroll-btn" onclick="scrollToBottom()" title="Jump to latest">&#8595;</button>
   <div class="inputs">
     <input
       type="text"
       rows="3"
-      placeholder="Message"
+      placeholder="Message..."
       name="message"
       id="message"
     />
-    <button type="button" name="send" id="send-btn" onClick="sendMessage()">
+    <button type="button" name="send" id="send-btn" class="neon-btn" onClick="sendMessage()">
       Send
     </button>
   </div>
 </div>
-<script type="text/javascript">
-  var socketio = io();
 
+<!-- Hidden element to safely pass server-side Jinja variables to client-side JS without causing SyntaxErrors -->
+<div id="message-backlog" style="display: none;">
+  {% for msg in messages %}
+    <span class="backlog-item" data-name="{{ msg.name }}" data-message="{{ msg.message }}"></span>
+  {% endfor %}
+</div>
+
+<script type="text/javascript">
   const messages = document.getElementById("messages");
   const scrollBtn = document.getElementById("scroll-btn");
 
@@ -40,7 +46,7 @@
     const content = `
     <div class="text">
         <span>
-            <strong>${name}</strong>: ${msg}
+            <strong class="highlight">${name}</strong>: ${msg}
         </span>
         <span class="muted">
             ${new Date().toLocaleString()}
@@ -52,23 +58,80 @@
     else scrollBtn.style.display = "flex";
   };
 
-  socketio.on("message", (data) => {
-    createMessage(data.name, data.message);
+  // Safely load the initial backlog of messages from HTML attributes
+  const backlogItems = document.querySelectorAll("#message-backlog .backlog-item");
+  backlogItems.forEach((item) => {
+    const name = item.getAttribute("data-name");
+    const msg = item.getAttribute("data-message");
+    createMessage(name, msg);
   });
 
-  const sendMessage = () => {
-    const message = document.getElementById("message");
-    if (message.value == "") return;
-    socketio.emit("message", { data: message.value });
-    message.value = "";
-  };
+  // Core socket initialization logic
+  function initializeSocket() {
+    if (typeof io !== 'undefined') {
+      var socketio = io();
 
+      socketio.on("message", (data) => {
+        createMessage(data.name, data.message);
+      });
+
+      window.sendMessage = () => {
+        const message = document.getElementById("message");
+        if (message.value == "") return;
+        socketio.emit("message", { data: message.value });
+        message.value = "";
+      };
+    } else {
+      console.error("SocketIO library still failed to load after backup attempts.");
+    }
+  }
+
+  // Handle the keydown event listener safely
   document.getElementById("message").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendMessage();
+    if (e.key === "Enter") {
+      if (typeof sendMessage === "function") {
+        sendMessage();
+      }
+    }
+  });
+
+  // Dynamic self-healing loader for Socket.IO
+  window.addEventListener('DOMContentLoaded', () => {
+    if (typeof io !== 'undefined') {
+      initializeSocket();
+    } else {
+      console.warn("SocketIO 'io' not found. Attempting to load from server-hosted library...");
+
+      // Attempt 1: Load directly from the Flask-SocketIO hosted path (highly reliable)
+      const serverScript = document.createElement('script');
+      serverScript.src = "/socket.io/socket.io.js";
+
+      serverScript.onload = () => {
+        console.log("Successfully loaded Socket.IO from server-hosted library.");
+        initializeSocket();
+      };
+
+      serverScript.onerror = () => {
+        console.warn("Server-hosted library failed to load. Attempting CDN fallback...");
+
+        // Attempt 2: Load from general reliable public CDN fallback
+        const cdnScript = document.createElement('script');
+        cdnScript.src = "https://cdn.socket.io/4.7.5/socket.io.min.js";
+
+        cdnScript.onload = () => {
+          console.log("Successfully loaded Socket.IO from CDN fallback.");
+          initializeSocket();
+        };
+
+        cdnScript.onerror = () => {
+          console.error("All attempts to load Socket.IO library failed.");
+        };
+
+        document.head.appendChild(cdnScript);
+      };
+
+      document.head.appendChild(serverScript);
+    }
   });
 </script>
-{% for msg in messages %}
-<script type="text/javascript">
-  createMessage("{{msg.name}}", "{{msg.message}}");
-</script>
-{% endfor %} {% endblock %}
+{% endblock %}

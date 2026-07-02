@@ -4,7 +4,7 @@ from string import ascii_uppercase
 from flask import Flask, render_template, request, session, redirect, url_for
 from flask_socketio import join_room, leave_room, send, SocketIO
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='css', static_url_path='/css')
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dummy_secret_key")
 socketio = SocketIO(app, async_mode="gevent")
 

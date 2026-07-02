@@ -1,11 +1,10 @@
-import os
-import random
-from string import ascii_uppercase
 from flask import Flask, render_template, request, session, redirect, url_for
 from flask_socketio import join_room, leave_room, send, SocketIO
+import random
+from string import ascii_uppercase
 
-app = Flask(__name__, static_folder='css', static_url_path='/css')
-app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dummy_secret_key")
+app = Flask(__name__)
+app.config["SECRET_KEY"] = "hdjsandkdla"
 socketio = SocketIO(app, async_mode="gevent")
 
 rooms = {}
@@ -102,4 +101,4 @@ def disconnect():
     print(f"{name} has left the room {room}")
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False)

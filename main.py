@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, session, redirect, url_for
-from flask_socketio import join_room, leave_room, send, SocketIO
+import os
 import random
 from string import ascii_uppercase
-from dotenv import load_dotenv
+from flask import Flask, render_template, request, session, redirect, url_for
+from flask_socketio import join_room, leave_room, send, SocketIO
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "hdjsandkdla"
+app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dummy_secret_key")
 socketio = SocketIO(app, async_mode="gevent")
 
 rooms = {}
